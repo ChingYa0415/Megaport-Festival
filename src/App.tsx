@@ -3,7 +3,7 @@ import { SetupPage } from './pages/SetupPage'
 import { SchedulePage } from './pages/SchedulePage'
 
 export default function App() {
-  const { userId, user, loading, createProfile } = useAuth()
+  const { userId, user, loading, createProfile, resetUser } = useAuth()
 
   if (loading) {
     return (
@@ -25,5 +25,5 @@ export default function App() {
     return <SetupPage userId={userId} onComplete={createProfile} />
   }
 
-  return <SchedulePage user={user} />
+  return <SchedulePage user={user} onReset={resetUser} />
 }

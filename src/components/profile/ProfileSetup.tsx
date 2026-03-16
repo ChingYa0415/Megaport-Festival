@@ -1,6 +1,4 @@
 import { useState } from 'react'
-import { AvatarUploader } from './AvatarUploader'
-import { useImageUpload } from '../../hooks/useImageUpload'
 
 interface ProfileSetupProps {
   userId: string
@@ -9,20 +7,34 @@ interface ProfileSetupProps {
 
 const DEFAULT_AVATAR = 'https://ui-avatars.com/api/?background=e53e3e&color=fff&bold=true&size=200&name='
 
-export function ProfileSetup({ userId, onComplete }: ProfileSetupProps) {
+const PRESET_AVATARS = [
+  'https://api.dicebear.com/9.x/pixel-art/svg?seed=Felix',
+  'https://api.dicebear.com/9.x/pixel-art/svg?seed=Milo',
+  'https://api.dicebear.com/9.x/pixel-art/svg?seed=Luna',
+  'https://api.dicebear.com/9.x/pixel-art/svg?seed=Cleo',
+  'https://api.dicebear.com/9.x/pixel-art/svg?seed=Zara',
+  'https://api.dicebear.com/9.x/pixel-art/svg?seed=Orion',
+  'https://api.dicebear.com/9.x/pixel-art/svg?seed=Nova',
+  'https://api.dicebear.com/9.x/pixel-art/svg?seed=Puck',
+  'https://api.dicebear.com/9.x/pixel-art/svg?seed=Sage',
+  'https://api.dicebear.com/9.x/pixel-art/svg?seed=Wren',
+  'https://api.dicebear.com/9.x/pixel-art/svg?seed=Ash',
+  'https://api.dicebear.com/9.x/pixel-art/svg?seed=River',
+  'https://api.dicebear.com/9.x/pixel-art/svg?seed=Ember',
+  'https://api.dicebear.com/9.x/pixel-art/svg?seed=Finn',
+  'https://api.dicebear.com/9.x/pixel-art/svg?seed=Ivy',
+  'https://api.dicebear.com/9.x/pixel-art/svg?seed=Jasper',
+  'https://api.dicebear.com/9.x/pixel-art/svg?seed=Kai',
+  'https://api.dicebear.com/9.x/pixel-art/svg?seed=Lena',
+  'https://api.dicebear.com/9.x/pixel-art/svg?seed=Rex',
+  'https://api.dicebear.com/9.x/pixel-art/svg?seed=Skye',
+]
+
+export function ProfileSetup({ userId: _userId, onComplete }: ProfileSetupProps) {
   const [name, setName] = useState('')
-  const [file, setFile] = useState<File | null>(null)
-  const [preview, setPreview] = useState<string | null>(null)
+  const [presetUrl, setPresetUrl] = useState<string | null>(null)
   const [submitting, setSubmitting] = useState(false)
   const [error, setError] = useState('')
-  const { uploadAvatar } = useImageUpload()
-
-  const handleFileSelect = (f: File) => {
-    setFile(f)
-    const reader = new FileReader()
-    reader.onload = (e) => setPreview(e.target?.result as string)
-    reader.readAsDataURL(f)
-  }
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
@@ -31,12 +43,7 @@ export function ProfileSetup({ userId, onComplete }: ProfileSetupProps) {
     setSubmitting(true)
     setError('')
     try {
-      let avatarUrl: string
-      if (file) {
-        avatarUrl = await uploadAvatar(file, userId)
-      } else {
-        avatarUrl = DEFAULT_AVATAR + encodeURIComponent(name.trim())
-      }
+      const avatarUrl = presetUrl ?? DEFAULT_AVATAR + encodeURIComponent(name.trim())
       await onComplete(name.trim(), avatarUrl)
     } catch (err) {
       console.error('Profile setup failed:', err)
@@ -51,10 +58,26 @@ export function ProfileSetup({ userId, onComplete }: ProfileSetupProps) {
       <form onSubmit={handleSubmit} className="w-full max-w-xs space-y-6 text-center">
         <div>
           <h1 className="text-2xl font-bold text-white">大港開唱 2026</h1>
-          <p className="text-sm text-white/50 mt-1">好友行程共享</p>
         </div>
 
-        <AvatarUploader preview={preview} onFileSelect={handleFileSelect} />
+        {/* 預設頭像 */}
+        <div>
+          <p className="text-xs text-white/40 mb-2">選擇頭像</p>
+          <div className="grid grid-cols-5 gap-2 justify-items-center">
+            {PRESET_AVATARS.map((url) => (
+              <button
+                key={url}
+                type="button"
+                onClick={() => setPresetUrl(url)}
+                className={`w-12 h-12 rounded-full overflow-hidden border-2 transition-colors ${
+                  presetUrl === url ? 'border-white' : 'border-white/20 hover:border-white/50'
+                }`}
+              >
+                <img src={url} alt="preset" className="w-full h-full object-cover bg-white/10" />
+              </button>
+            ))}
+          </div>
+        </div>
 
         <input
           type="text"

@@ -2,18 +2,21 @@ import type { Stage } from '../../types'
 
 interface StageHeaderProps {
   stages: Stage[]
+  day: 1 | 2
 }
 
-export function StageHeader({ stages }: StageHeaderProps) {
+const DAY_DATES: Record<1 | 2, string> = { 1: '3/21', 2: '3/22' }
+
+export function StageHeader({ stages, day }: StageHeaderProps) {
   return (
     <div className="stage-header-row flex bg-[#16213e]">
-      <div className="stage-header-corner flex items-center justify-center text-[10px] text-white/30">
-        時間
+      <div className="stage-header-corner flex items-center justify-center text-[24px] font-bold text-white py-6">
+        {DAY_DATES[day]}
       </div>
       {stages.map((stage) => (
         <div
           key={stage.id}
-          className="flex items-center justify-center text-xs font-bold text-white py-2 border-b-2"
+          className="flex items-center justify-center text-[24px] font-bold text-white py-6 border-b-2"
           style={{
             minWidth: 'var(--stage-col-width)',
             width: 'var(--stage-col-width)',

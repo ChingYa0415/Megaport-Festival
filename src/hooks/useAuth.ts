@@ -1,6 +1,6 @@
 import { useState, useEffect, useCallback } from 'react'
-import { signInAnonymously, onAuthStateChanged } from 'firebase/auth'
-import { doc, getDoc, setDoc, serverTimestamp } from 'firebase/firestore'
+import { signInAnonymously, onAuthStateChanged, signOut } from 'firebase/auth'
+import { doc, getDoc, setDoc, deleteDoc, serverTimestamp } from 'firebase/firestore'
 import { auth, db } from '../config/firebase'
 import type { User } from '../types'
 
@@ -16,6 +16,8 @@ export function useAuth() {
         const userDoc = await getDoc(doc(db, 'users', firebaseUser.uid))
         if (userDoc.exists()) {
           setUser({ id: firebaseUser.uid, ...userDoc.data() } as User)
+        } else {
+          setUser(null)
         }
       } else {
         try {
@@ -43,5 +45,11 @@ export function useAuth() {
     [userId]
   )
 
-  return { userId, user, loading, createProfile }
+  const resetUser = useCallback(async () => {
+    if (!userId) return
+    await deleteDoc(doc(db, 'users', userId))
+    await signOut(auth)
+  }, [userId])
+
+  return { userId, user, loading, createProfile, resetUser }
 }

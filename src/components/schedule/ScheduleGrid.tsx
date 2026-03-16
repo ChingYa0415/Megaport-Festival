@@ -1,6 +1,6 @@
-import { useMemo } from 'react'
+import { useMemo, useState } from 'react'
 import type { Performance, User } from '../../types'
-import { stages } from '../../data/stages'
+import { stages, stageCardColorMap } from '../../data/stages'
 import { getPerformancesByDayAndStage } from '../../data/schedule'
 import { StageHeader } from './StageHeader'
 import { PerformanceCard } from './PerformanceCard'
@@ -11,6 +11,7 @@ interface ScheduleGridProps {
   users: Map<string, User>
   getAttendees: (performanceId: string) => string[]
   toggleSelection: (performanceId: string, userId: string) => void
+  zoom: number
 }
 
 function timeToMinutes(time: string): number {
@@ -20,7 +21,7 @@ function timeToMinutes(time: string): number {
 
 const PX_PER_10MIN = 40
 const DAY_START = timeToMinutes('12:30')
-const DAY_END = timeToMinutes('23:00')
+const DAY_END = timeToMinutes('21:50')
 
 function generateTimeSlots(): string[] {
   const slots: string[] = []
@@ -32,15 +33,22 @@ function generateTimeSlots(): string[] {
   return slots
 }
 
+interface LongPressInfo {
+  performance: Performance
+  attendeeIds: string[]
+}
+
 export function ScheduleGrid({
   day,
   userId,
   users,
   getAttendees,
   toggleSelection,
+  zoom,
 }: ScheduleGridProps) {
   const timeSlots = useMemo(() => generateTimeSlots(), [])
   const totalHeight = timeSlots.length * PX_PER_10MIN
+  const [longPressInfo, setLongPressInfo] = useState<LongPressInfo | null>(null)
 
   const stagePerformances = useMemo(
     () =>
@@ -52,8 +60,9 @@ export function ScheduleGrid({
   )
 
   return (
-    <div className="schedule-container">
-      <StageHeader stages={stages} />
+    <>
+    <div className="schedule-container" style={{ zoom }}>
+      <StageHeader stages={stages} day={day} />
 
       <div className="flex" style={{ minHeight: `${totalHeight}px` }}>
         {/* Time column */}
@@ -65,11 +74,15 @@ export function ScheduleGrid({
               const nm = m + 10
               return `${nm >= 60 ? h + 1 : h}:${(nm % 60).toString().padStart(2, '0')}`
             })()
+            const isHour = (DAY_START + (i + 1) * 10) % 60 === 0
             return (
               <div
                 key={time}
-                className="text-[10px] text-white/40 text-right pr-1.5 border-b border-white/5"
-                style={{ height: `${PX_PER_10MIN}px`, lineHeight: `${PX_PER_10MIN}px` }}
+                className="text-[10px] text-black font-bold flex items-center justify-center"
+                style={{
+                  height: `${PX_PER_10MIN}px`,
+                  borderBottom: isHour ? '2px solid #000' : '1px solid #000',
+                }}
               >
                 {time} - {endLabel}
               </div>
@@ -78,7 +91,7 @@ export function ScheduleGrid({
         </div>
 
         {/* Stage columns */}
-        {stagePerformances.map(({ stage, performances }) => (
+        {stagePerformances.map(({ stage, performances }, colIndex) => (
           <StageColumn
             key={stage.id}
             stage={stage}
@@ -89,10 +102,52 @@ export function ScheduleGrid({
             toggleSelection={toggleSelection}
             totalHeight={totalHeight}
             slotCount={timeSlots.length}
+            colIndex={colIndex}
+            onLongPress={(perf, attendeeIds) => setLongPressInfo({ performance: perf, attendeeIds })}
           />
         ))}
       </div>
     </div>
+
+    {/* 長按 Modal */}
+    {longPressInfo && (
+      <div
+        className="fixed inset-0 z-50 flex items-center justify-center bg-black/50"
+        onClick={() => setLongPressInfo(null)}
+      >
+        <div
+          className="bg-white rounded-2xl p-5 w-72 shadow-xl"
+          onClick={(e) => e.stopPropagation()}
+        >
+          <h2 className="text-base font-bold text-black mb-1">{longPressInfo.performance.name}</h2>
+          <p className="text-xs text-black/40 mb-4">
+            {longPressInfo.performance.startTime} – {longPressInfo.performance.endTime}
+          </p>
+          {longPressInfo.attendeeIds.length === 0 ? (
+            <p className="text-sm text-black/40">還沒有人選擇這場</p>
+          ) : (
+            <ul className="space-y-2">
+              {longPressInfo.attendeeIds.map((uid) => {
+                const user = users.get(uid)
+                return user ? (
+                  <li key={uid} className="flex items-center gap-3">
+                    <img src={user.avatarUrl} alt={user.name} className="w-8 h-8 rounded-full object-cover" />
+                    <span className="text-sm text-black">{user.name}</span>
+                  </li>
+                ) : null
+              })}
+            </ul>
+          )}
+          <button
+            className="mt-4 w-full py-2 rounded-xl bg-black/5 text-sm text-black/60"
+            onClick={() => setLongPressInfo(null)}
+          >
+            關閉
+          </button>
+        </div>
+      </div>
+    )}
+    </>
   )
 }
 
@@ -104,6 +159,8 @@ interface StageColumnProps {
   getAttendees: (performanceId: string) => string[]
   toggleSelection: (performanceId: string, userId: string) => void
   totalHeight: number
+  colIndex: number
+  onLongPress: (perf: Performance, attendeeIds: string[]) => void
 }
 
 function StageColumn({
@@ -115,25 +172,50 @@ function StageColumn({
   toggleSelection,
   totalHeight,
   slotCount,
+  colIndex,
+  onLongPress,
 }: StageColumnProps & { slotCount: number }) {
+  const coveredRows = useMemo(() => {
+    const covered = new Array(slotCount).fill(false) as boolean[]
+    for (const perf of performances) {
+      const startMin = timeToMinutes(perf.startTime)
+      const endMin = timeToMinutes(perf.endTime)
+      for (let i = 0; i < slotCount; i++) {
+        const rowStart = DAY_START + i * 10
+        if (startMin <= rowStart && endMin > rowStart) {
+          covered[i] = true
+        }
+      }
+    }
+    return covered
+  }, [performances, slotCount])
+
   return (
     <div
-      className="relative border-r border-white/10"
+      className="relative"
       style={{
         minWidth: 'var(--stage-col-width)',
         width: 'var(--stage-col-width)',
         height: `${totalHeight}px`,
-        backgroundColor: `${stage.color}15`,
       }}
     >
-      {/* 橫線格線 */}
-      {Array.from({ length: slotCount }, (_, i) => (
-        <div
-          key={i}
-          className="absolute left-0 right-0 border-b border-white/10"
-          style={{ top: `${(i + 1) * PX_PER_10MIN}px` }}
-        />
-      ))}
+      {Array.from({ length: slotCount }, (_, i) => {
+        const isCovered = coveredRows[i]
+        const isHour = (DAY_START + (i + 1) * 10) % 60 === 0
+        return (
+          <div
+            key={i}
+            className="absolute left-0 right-0"
+            style={{
+              top: `${i * PX_PER_10MIN}px`,
+              height: `${PX_PER_10MIN}px`,
+              backgroundColor: isCovered ? (stageCardColorMap[stage.id] ?? stage.color) : (colIndex % 2 === 0 ? '#DCDEDD' : '#FFFFFF'),
+              borderBottom: isCovered ? 'none' : (isHour ? '2px solid #000' : '1px solid #000'),
+              zIndex: 0,
+            }}
+          />
+        )
+      })}
 
       {performances.map((perf) => {
         const top = ((timeToMinutes(perf.startTime) - DAY_START) / 10) * PX_PER_10MIN
@@ -143,16 +225,17 @@ function StageColumn({
         return (
           <div
             key={perf.id}
-            className="absolute left-0.5 right-0.5"
-            style={{ top: `${top}px` }}
+            className="absolute left-0 right-0"
+            style={{ top: `${top}px`, zIndex: 1 }}
           >
             <PerformanceCard
               performance={perf}
-              stageColor={stage.color}
+              stageColor={stageCardColorMap[stage.id] ?? stage.color}
               attendeeIds={attendees}
               users={users}
               isSelected={isSelected}
               onClick={() => toggleSelection(perf.id, userId)}
+              onLongPress={() => onLongPress(perf, attendees)}
             />
           </div>
         )

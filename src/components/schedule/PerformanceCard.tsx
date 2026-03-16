@@ -1,3 +1,4 @@
+import { useRef } from 'react'
 import type { Performance, User } from '../../types'
 import { AttendeeAvatars } from './AttendeeAvatars'
 
@@ -8,7 +9,9 @@ interface PerformanceCardProps {
   users: Map<string, User>
   isSelected: boolean
   onClick: () => void
+  onLongPress: () => void
 }
+
 
 function timeToMinutes(time: string): number {
   const [h, m] = time.split(':').map(Number)
@@ -19,35 +22,60 @@ const PX_PER_10MIN = 40
 
 export function PerformanceCard({
   performance,
-  stageColor,
+  stageColor: _stageColor,
   attendeeIds,
   users,
   isSelected,
   onClick,
+  onLongPress,
 }: PerformanceCardProps) {
   const duration = timeToMinutes(performance.endTime) - timeToMinutes(performance.startTime)
   const height = (duration / 10) * PX_PER_10MIN
+  const timerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
+  const longPressedRef = useRef(false)
+
+  const handlePointerDown = () => {
+    longPressedRef.current = false
+    timerRef.current = setTimeout(() => {
+      longPressedRef.current = true
+      timerRef.current = null
+      onLongPress()
+    }, 500)
+  }
+
+  const handlePointerUp = () => {
+    if (timerRef.current) {
+      clearTimeout(timerRef.current)
+      timerRef.current = null
+    }
+  }
+
+  const handleClick = () => {
+    if (!longPressedRef.current) onClick()
+  }
 
   return (
     <div
-      className={`performance-card rounded-lg p-1.5 ${isSelected ? 'selected' : ''}`}
+      className={`performance-card p-1.5 relative flex flex-col items-center justify-center ${isSelected ? 'selected' : ''}`}
       style={{
         height: `${height}px`,
-        backgroundColor: stageColor,
-        borderLeft: `3px solid ${stageColor}`,
+        backgroundColor: 'transparent',
       }}
-      onClick={onClick}
+      onPointerDown={handlePointerDown}
+      onPointerUp={handlePointerUp}
+      onPointerLeave={handlePointerUp}
+      onPointerCancel={handlePointerUp}
+      onClick={handleClick}
     >
-      <div className="text-[11px] font-bold text-white leading-tight truncate">
+      <div className="text-[17px] font-bold text-black leading-tight break-words">
         {performance.name}
       </div>
-      <div className="text-[9px] text-white/50">
-        {performance.startTime}-{performance.endTime}
-      </div>
       {performance.tag && (
-        <span className="text-[9px] text-yellow-300">{performance.tag}</span>
+        <span className="text-[15px] text-black">{performance.tag}</span>
       )}
-      <AttendeeAvatars attendeeIds={attendeeIds} users={users} />
+      <div className="absolute bottom-1 left-1">
+        <AttendeeAvatars attendeeIds={attendeeIds} users={users} />
+      </div>
     </div>
   )
 }

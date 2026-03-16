@@ -36,7 +36,7 @@ body {
   position: sticky;
   left: 0;
   z-index: 20;
-  background: #1a1a2e;
+  background: rgb(252, 232, 159);
   min-width: var(--time-col-width);
   width: var(--time-col-width);
 }
@@ -67,12 +67,11 @@ body {
 }
 
 .performance-card.selected {
-  box-shadow: 0 0 0 2px #fff, 0 0 8px rgba(255, 255, 255, 0.4);
 }
 
 .avatar-stack {
   display: flex;
-  flex-wrap: wrap;
+  flex-wrap: wrap-reverse;
   gap: 2px;
 }
 
