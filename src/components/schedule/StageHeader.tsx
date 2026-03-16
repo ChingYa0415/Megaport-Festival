@@ -18,7 +18,7 @@ export function StageHeader({ stages }: StageHeaderProps) {
             minWidth: 'var(--stage-col-width)',
             width: 'var(--stage-col-width)',
             borderColor: stage.color,
-            backgroundColor: `${stage.color}15`,
+            backgroundColor: stage.color,
           }}
         >
           {stage.name}

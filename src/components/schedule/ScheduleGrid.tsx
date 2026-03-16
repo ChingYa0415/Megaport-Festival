@@ -58,15 +58,23 @@ export function ScheduleGrid({
       <div className="flex" style={{ minHeight: `${totalHeight}px` }}>
         {/* Time column */}
         <div className="time-column">
-          {timeSlots.map((time, i) => (
-            <div
-              key={time}
-              className="text-[10px] text-white/40 text-right pr-1.5 border-b border-white/5"
-              style={{ height: `${PX_PER_10MIN}px`, lineHeight: `${PX_PER_10MIN}px` }}
-            >
-              {i % 3 === 0 ? time : ''}
-            </div>
-          ))}
+          {timeSlots.map((time, i) => {
+            const nextSlot = timeSlots[i + 1]
+            const endLabel = nextSlot ?? (() => {
+              const [h, m] = time.split(':').map(Number)
+              const nm = m + 10
+              return `${nm >= 60 ? h + 1 : h}:${(nm % 60).toString().padStart(2, '0')}`
+            })()
+            return (
+              <div
+                key={time}
+                className="text-[10px] text-white/40 text-right pr-1.5 border-b border-white/5"
+                style={{ height: `${PX_PER_10MIN}px`, lineHeight: `${PX_PER_10MIN}px` }}
+              >
+                {time} - {endLabel}
+              </div>
+            )
+          })}
         </div>
 
         {/* Stage columns */}
@@ -80,6 +88,7 @@ export function ScheduleGrid({
             getAttendees={getAttendees}
             toggleSelection={toggleSelection}
             totalHeight={totalHeight}
+            slotCount={timeSlots.length}
           />
         ))}
       </div>
@@ -105,16 +114,27 @@ function StageColumn({
   getAttendees,
   toggleSelection,
   totalHeight,
-}: StageColumnProps) {
+  slotCount,
+}: StageColumnProps & { slotCount: number }) {
   return (
     <div
-      className="relative border-r border-white/5"
+      className="relative border-r border-white/10"
       style={{
         minWidth: 'var(--stage-col-width)',
         width: 'var(--stage-col-width)',
         height: `${totalHeight}px`,
+        backgroundColor: `${stage.color}15`,
       }}
     >
+      {/* 橫線格線 */}
+      {Array.from({ length: slotCount }, (_, i) => (
+        <div
+          key={i}
+          className="absolute left-0 right-0 border-b border-white/10"
+          style={{ top: `${(i + 1) * PX_PER_10MIN}px` }}
+        />
+      ))}
+
       {performances.map((perf) => {
         const top = ((timeToMinutes(perf.startTime) - DAY_START) / 10) * PX_PER_10MIN
         const attendees = getAttendees(perf.id)

@@ -33,7 +33,7 @@ export function PerformanceCard({
       className={`performance-card rounded-lg p-1.5 ${isSelected ? 'selected' : ''}`}
       style={{
         height: `${height}px`,
-        backgroundColor: `${stageColor}22`,
+        backgroundColor: stageColor,
         borderLeft: `3px solid ${stageColor}`,
       }}
       onClick={onClick}

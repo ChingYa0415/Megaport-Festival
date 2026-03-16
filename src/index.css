@@ -2,7 +2,7 @@
 
 :root {
   --header-height: 96px;
-  --time-col-width: 52px;
+  --time-col-width: 84px;
   --stage-col-width: 120px;
   --row-height-per-10min: 40px;
 }
