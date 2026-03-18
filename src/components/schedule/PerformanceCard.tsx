@@ -8,6 +8,8 @@ interface PerformanceCardProps {
   attendeeIds: string[]
   users: Map<string, User>
   isSelected: boolean
+  isConflict: boolean
+  textScale: number
   onClick: () => void
   onLongPress: () => void
 }
@@ -26,6 +28,8 @@ export function PerformanceCard({
   attendeeIds,
   users,
   isSelected,
+  isConflict,
+  textScale,
   onClick,
   onLongPress,
 }: PerformanceCardProps) {
@@ -56,7 +60,7 @@ export function PerformanceCard({
 
   return (
     <div
-      className={`performance-card p-1.5 relative flex flex-col items-center justify-center ${isSelected ? 'selected' : ''}`}
+      className={`performance-card p-1.5 relative flex flex-col items-center justify-center border-2 ${isSelected ? 'selected' : ''} ${isConflict ? 'border-[#B91C1C] shadow-[inset_0_0_0_1px_rgba(255,255,255,0.25)]' : 'border-transparent'}`}
       style={{
         height: `${height}px`,
         backgroundColor: 'transparent',
@@ -67,11 +71,24 @@ export function PerformanceCard({
       onPointerCancel={handlePointerUp}
       onClick={handleClick}
     >
-      <div className="text-[17px] font-bold text-black leading-tight break-words">
+      {isConflict && (
+        <span
+          className="absolute top-0.5 right-0.5 rounded-md bg-[#B91C1C] text-white font-bold px-1"
+          style={{ fontSize: `${Math.max(8, 9 * textScale)}px`, lineHeight: 1.1 }}
+        >
+          衝堂
+        </span>
+      )}
+      <div
+        className="font-bold text-black leading-tight break-words"
+        style={{ fontSize: `${17 * textScale}px` }}
+      >
         {performance.name}
       </div>
       {performance.tag && (
-        <span className="text-[15px] text-black">{performance.tag}</span>
+        <span className="text-black" style={{ fontSize: `${15 * textScale}px` }}>
+          {performance.tag}
+        </span>
       )}
       <div className="absolute bottom-1 left-1">
         <AttendeeAvatars attendeeIds={attendeeIds} users={users} />

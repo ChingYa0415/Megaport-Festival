@@ -1,6 +1,6 @@
 import { initializeApp } from 'firebase/app'
-import { getAuth } from 'firebase/auth'
-import { getFirestore } from 'firebase/firestore'
+import { browserLocalPersistence, getAuth, setPersistence } from 'firebase/auth'
+import { enableMultiTabIndexedDbPersistence, getFirestore } from 'firebase/firestore'
 import { getStorage } from 'firebase/storage'
 
 const firebaseConfig = {
@@ -18,3 +18,16 @@ const app = initializeApp(firebaseConfig)
 export const auth = getAuth(app)
 export const db = getFirestore(app)
 export const storage = getStorage(app)
+
+if (typeof window !== 'undefined') {
+  setPersistence(auth, browserLocalPersistence).catch((err) => {
+    console.warn('設定 Auth 持久化失敗，將使用預設模式:', err)
+  })
+
+  enableMultiTabIndexedDbPersistence(db).catch((err) => {
+    // 允許在不支援離線持久化的環境繼續運作
+    if (err.code !== 'failed-precondition' && err.code !== 'unimplemented') {
+      console.error('啟用 Firestore 離線模式失敗:', err)
+    }
+  })
+}

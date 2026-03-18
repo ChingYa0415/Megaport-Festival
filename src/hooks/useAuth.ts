@@ -1,6 +1,18 @@
 import { useState, useEffect, useCallback } from 'react'
 import { signInAnonymously, onAuthStateChanged, signOut } from 'firebase/auth'
-import { doc, getDoc, setDoc, deleteDoc, serverTimestamp } from 'firebase/firestore'
+import {
+  doc,
+  getDoc,
+  setDoc,
+  deleteDoc,
+  serverTimestamp,
+  collection,
+  query,
+  where,
+  getDocs,
+  updateDoc,
+  arrayRemove,
+} from 'firebase/firestore'
 import { auth, db } from '../config/firebase'
 import type { User } from '../types'
 
@@ -47,6 +59,22 @@ export function useAuth() {
 
   const resetUser = useCallback(async () => {
     if (!userId) return
+
+    const selectionsQuery = query(
+      collection(db, 'selections'),
+      where('attendees', 'array-contains', userId)
+    )
+    const selectionsSnapshot = await getDocs(selectionsQuery)
+
+    await Promise.all(
+      selectionsSnapshot.docs.map((selectionDoc) =>
+        updateDoc(selectionDoc.ref, {
+          attendees: arrayRemove(userId),
+          updatedAt: serverTimestamp(),
+        })
+      )
+    )
+
     await deleteDoc(doc(db, 'users', userId))
     await signOut(auth)
   }, [userId])

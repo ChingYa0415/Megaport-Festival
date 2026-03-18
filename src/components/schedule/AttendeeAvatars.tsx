@@ -8,9 +8,9 @@ interface AttendeeAvatarsProps {
 export function AttendeeAvatars({ attendeeIds, users }: AttendeeAvatarsProps) {
   if (attendeeIds.length === 0) return null
 
-  const maxShow = 3
-  const visible = attendeeIds.slice(0, maxShow)
-  const overflow = attendeeIds.length - maxShow
+  const visible = attendeeIds.filter((uid) => users.has(uid))
+
+  if (visible.length === 0) return null
 
   return (
     <div className="avatar-stack mt-1">
@@ -26,11 +26,6 @@ export function AttendeeAvatars({ attendeeIds, users }: AttendeeAvatarsProps) {
           />
         ) : null
       })}
-      {overflow > 0 && (
-        <span className="text-[10px] text-white/70 leading-[22px] ml-0.5">
-          +{overflow}
-        </span>
-      )}
     </div>
   )
 }

@@ -1,17 +1,20 @@
 import { useMemo, useState } from 'react'
 import type { Performance, User } from '../../types'
 import { stages, stageCardColorMap } from '../../data/stages'
-import { getPerformancesByDayAndStage } from '../../data/schedule'
 import { StageHeader } from './StageHeader'
 import { PerformanceCard } from './PerformanceCard'
 
 interface ScheduleGridProps {
   day: 1 | 2
+  performances: Performance[]
   userId: string
   users: Map<string, User>
   getAttendees: (performanceId: string) => string[]
   toggleSelection: (performanceId: string, userId: string) => void
   zoom: number
+  textScale: number
+  conflictIds: Set<string>
+  onBeforeToggle: (performance: Performance, isSelected: boolean) => void
 }
 
 function timeToMinutes(time: string): number {
@@ -40,11 +43,15 @@ interface LongPressInfo {
 
 export function ScheduleGrid({
   day,
+  performances,
   userId,
   users,
   getAttendees,
   toggleSelection,
   zoom,
+  textScale,
+  conflictIds,
+  onBeforeToggle,
 }: ScheduleGridProps) {
   const timeSlots = useMemo(() => generateTimeSlots(), [])
   const totalHeight = timeSlots.length * PX_PER_10MIN
@@ -54,15 +61,15 @@ export function ScheduleGrid({
     () =>
       stages.map((stage) => ({
         stage,
-        performances: getPerformancesByDayAndStage(day, stage.id),
+        performances: performances.filter((performance) => performance.stage === stage.id),
       })),
-    [day]
+    [performances]
   )
 
   return (
     <>
     <div className="schedule-container" style={{ zoom }}>
-      <StageHeader stages={stages} day={day} />
+      <StageHeader stages={stages} day={day} textScale={textScale} />
 
       <div className="flex" style={{ minHeight: `${totalHeight}px` }}>
         {/* Time column */}
@@ -78,9 +85,10 @@ export function ScheduleGrid({
             return (
               <div
                 key={time}
-                className="text-[10px] text-black font-bold flex items-center justify-center"
+                className="text-black font-bold flex items-center justify-center"
                 style={{
                   height: `${PX_PER_10MIN}px`,
+                  fontSize: `${10 * textScale}px`,
                   borderBottom: isHour ? '2px solid #000' : '1px solid #000',
                 }}
               >
@@ -103,6 +111,9 @@ export function ScheduleGrid({
             totalHeight={totalHeight}
             slotCount={timeSlots.length}
             colIndex={colIndex}
+            textScale={textScale}
+            conflictIds={conflictIds}
+            onBeforeToggle={onBeforeToggle}
             onLongPress={(perf, attendeeIds) => setLongPressInfo({ performance: perf, attendeeIds })}
           />
         ))}
@@ -160,6 +171,9 @@ interface StageColumnProps {
   toggleSelection: (performanceId: string, userId: string) => void
   totalHeight: number
   colIndex: number
+  textScale: number
+  conflictIds: Set<string>
+  onBeforeToggle: (performance: Performance, isSelected: boolean) => void
   onLongPress: (perf: Performance, attendeeIds: string[]) => void
 }
 
@@ -173,6 +187,9 @@ function StageColumn({
   totalHeight,
   slotCount,
   colIndex,
+  textScale,
+  conflictIds,
+  onBeforeToggle,
   onLongPress,
 }: StageColumnProps & { slotCount: number }) {
   const coveredRows = useMemo(() => {
@@ -220,7 +237,13 @@ function StageColumn({
       {performances.map((perf) => {
         const top = ((timeToMinutes(perf.startTime) - DAY_START) / 10) * PX_PER_10MIN
         const attendees = getAttendees(perf.id)
+        const existingAttendees = attendees.filter((uid) => users.has(uid))
         const isSelected = attendees.includes(userId)
+        const isConflict = conflictIds.has(perf.id)
+        const handleClick = () => {
+          onBeforeToggle(perf, isSelected)
+          toggleSelection(perf.id, userId)
+        }
 
         return (
           <div
@@ -231,11 +254,13 @@ function StageColumn({
             <PerformanceCard
               performance={perf}
               stageColor={stageCardColorMap[stage.id] ?? stage.color}
-              attendeeIds={attendees}
+              attendeeIds={existingAttendees}
               users={users}
               isSelected={isSelected}
-              onClick={() => toggleSelection(perf.id, userId)}
-              onLongPress={() => onLongPress(perf, attendees)}
+              isConflict={isConflict}
+              textScale={textScale}
+              onClick={handleClick}
+              onLongPress={() => onLongPress(perf, existingAttendees)}
             />
           </div>
         )
